@@ -1,0 +1,98 @@
+npm i --save-dev typescript @types/express @types/node
+
+npx tsc --init
+
+
+ npx tsc
+
+ node build/app.js
+
+
+ // "start":"npx tsc && node dist/index.js",
+
+
+ npm add concurrently
+
+   
+     npm install -g sequelize-cli
+
+npm install --save sequelize
+
+npx sequelize-cli init
+
+
+sequelize-cli migration:generate --name create_table_name
+
+npx sequelize-cli db:migrate --env production
+
+sequelize-cli db:migrate
+
+sequelize-cli db:migrate:undo
+
+sequelize-cli db:migrate:undo
+sequelize-cli db:migrate
+
+
+sequelize-cli migration:generate --name update_user_model
+
+
+sequelize-cli seed:generate --name demo-user
+
+
+sequelize-cli db:seed:all
+
+npx sequelize-cli db:drop
+npx sequelize-cli db:create
+npx sequelize-cli db:migrate
+
+
+npx sequelize db:seed --seed seeders/seeder_file_name.js // FOR SINGLE	
+
+sequelize-cli migration:generate --name create_subscription_table
+
+sequelize-cli migration:generate --name add_column_to_subscription_table
+
+sequelize-cli migration:generate --name add_column_to_subscription_table
+
+npx sequelize-cli migration:generate --name rename-field-in-table
+
+npx sequelize db:seed --seed 20250107085124-demo-super-admin.js
+
+validator js
+
+https://blog.logrocket.com/handle-data-validation-node-js-validatorjs/
+
+
+npm install bcrypt --save
+npx sequelize-cli model:generate --name Post --attributes title:string,content:text,published:boolean
+
+
+https://codedamn.com/news/nodejs/use-json-web-token-jwt-in-nodejs#using_jwt_with_expressjs
+
+master tables are user type, user,plans, product type, payment type
+
+SELECT `id`, `coupon_name`, `coupon_code`, `coupon_amount`, `coupon_type`, `coupon_off_percentage`, `coupon_off_amount`, `status`, `coupon_start_date`, `coupon_end_date`, `coupon_maximum_use`, `coupon_uses`, `coupon_specific_product`, `coupon_referel_id`, `coupon_specific_payment`, `created_at`, `updated_at` FROM `coupons` AS `Coupon` WHERE (JSON_CONTAINS(`coupon_specific_product`, '[2]') OR `Coupon`.`coupon_specific_product` IS NULL);
+
+
+Op.eq: Equal to
+Op.ne: Not equal to
+Op.gt: Greater than
+Op.gte: Greater than or equal to
+Op.lt: Less than
+Op.lte: Less than or equal to
+Op.between: Between two values
+Op.notBetween: Not between two values
+Op.like: LIKE operator for pattern matching
+
+
+
+
+docker
+
+docker-compose up -d
+docker-compose logs kafka
+
+
+docker exec -it kafka /usr/bin/kafka-topics --create --topic delegateUpdates --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+docker-compose ps
+docker-compose up -d

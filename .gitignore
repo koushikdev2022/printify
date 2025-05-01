@@ -1,0 +1,9 @@
+/node_modules
+/.vscode
+.env
+.dev.env
+/public/uploads/
+package-lock.json
+logs
+uploads/
+uploads

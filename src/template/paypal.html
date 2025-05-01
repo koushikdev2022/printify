@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayPal Subscription</title>
+    <script src="https://www.paypal.com/sdk/js?client-id=AaSEwcnItnJpKhewsbOfoYKs9lUUKSbvWsStkMiJ1I8ioG8O4dtWtx-bgLTW0m37mXWzThU1mtDekzTM&vault=true&intent=subscription"></script>
+</head>
+<body>
+
+    <h2>Subscribe to a Plan</h2>
+    <div id="paypal-button-container"></div>
+
+    <script>
+        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NiwidXNlcm5hbWUiOiJ0b20xMjMiLCJlbWFpbCI6InRvbUB5b3BtYWlsLmNvbSIsImZpcnN0X25hbWUiOiJUb20iLCJsYXN0X25hbWUiOiJEYXZlIiwicGhvbmUiOm51bGwsImRvYiI6bnVsbCwiaXNfYWN0aXZlIjoxLCJ0b2tlblR5cGUiOiJ1c2VyIiwiaWF0IjoxNzM4ODI1NTkxLCJleHAiOjE3Mzg5MTE5OTF9.vLxO1xWRPAonQ2Ua_Qb5_LpwajL-ng1pGQxmiRBwU0Y"
+        document.addEventListener("DOMContentLoaded", function () {
+        fetch('http://localhost:3015/user/payment/create-sub', {
+            method: 'POST',
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ plan_id: "1" }) // Replace with actual plan ID
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status_code === 200 && data.data.plan_id) {
+                const paypalPlanId = data.data.plan_id; // ✅ Correct PayPal Plan ID
+
+                paypal.Buttons({
+                    createSubscription: function (data, actions) {
+                        return actions.subscription.create({
+                            plan_id: paypalPlanId // ✅ Correct value
+                        });
+                    },
+                    onApprove: function (data, actions) {
+                        alert('Subscription successful! Subscription ID: ' + data.subscriptionID);
+
+                        // ✅ Send subscription ID to backend for record-keeping
+                        fetch('http://localhost:3015/user/payment/confirm', {
+                            method: 'POST',
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${token}`
+                            },
+                            body: JSON.stringify({ subscription_id: data.subscriptionID })
+                        })
+                        .then(response => response.json())
+                        .then(responseData => console.log(responseData))
+                        .catch(error => console.error('Error:', error));
+                    }
+                }).render('#paypal-button-container');
+            } else {
+                alert("Failed to get PayPal Plan ID");
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
+    </script>
+
+</body>
+</html>

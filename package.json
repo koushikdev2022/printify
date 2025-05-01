@@ -1,0 +1,32 @@
+{
+  "name": "videoeffect",
+  "version": "1.0.0",
+  "description": "video effect",
+  "main": "app.js",
+  "scripts": {
+    "start": "nodemon app"
+  },
+  "author": "iksen",
+  "license": "ISC",
+  "dependencies": {
+    "@fal-ai/client": "^1.2.3",
+    "@paypal/checkout-server-sdk": "^1.0.3",
+    "axios": "^1.8.1",
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-validator": "^7.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.12.0",
+    "nodemailer": "^6.9.16",
+    "nodemon": "^3.1.9",
+    "path": "^0.12.7",
+    "sequelize": "^6.37.5",
+    "stripe": "^17.7.0",
+    "uuid": "^11.0.5"
+  }
+}
