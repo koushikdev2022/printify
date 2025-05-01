@@ -8,11 +8,16 @@ const aiCharacterLoad = require("./aiCharacter/aiCharacterLoad");
 const planLoad = require("../route/plan/planLoad");
 const adminLoad = require("./admin/adminLoad")
 const slotLoad = require("./slot/slotLoad")
+const printifyLoad = require("./printify/printifyLoad")
 
 const defaultRoutes = [
     {
         prefix: "/user",
         route: userLoadRoute,
+    },
+    {
+        prefix: "/",
+        route: printifyLoad,
     },
     {
         prefix: "/slot",
