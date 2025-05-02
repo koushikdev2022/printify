@@ -5,5 +5,7 @@ const printifyController = require("../../controller/api/printify/printify.contr
 
 printifyRoute.get("/store",printifyController.store);
 printifyRoute.post("/store-save",printifyController.saveProduct);
+printifyRoute.get("/store-category",printifyController.category);
+printifyRoute.post("/store-save-new",printifyController.saveProductSave);
 
 module.exports = printifyRoute
