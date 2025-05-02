@@ -673,10 +673,11 @@ exports.varient = async (req, res) => {
         });
       } catch (err) {
         console.error("Error fetching print providers:", err?.response?.data || err.message);
-        const status = err?.response?.status || 500;
+        const status = err?.response?.status || 400;
         return res.status(status).json({
           status: false,
-          message: err?.response?.data?.message || "Internal Server Error"
+          message: err?.response?.data?.message || "Internal Server Error",
+          status_code:400
         });
       }
   };
