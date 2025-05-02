@@ -373,7 +373,7 @@ exports.saveProductSave = async (req, res) => {
   
     } catch (err) {
       console.error("Error in saveProduct:", err.message);
-      
+       
       // Log detailed error information
       if (err.response) {
         console.error("Error status:", err.response.status);
