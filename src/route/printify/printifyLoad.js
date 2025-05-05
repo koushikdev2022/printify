@@ -8,7 +8,7 @@ const defaultRoutes = [
     {
         prefix: "/printify",
         route: printifyRoute,
-        middleware:isAuthenticate
+        // middleware:isAuthenticate
     },
     
 ]
