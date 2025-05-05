@@ -668,9 +668,10 @@ exports.varient = async (req, res) => {
     
         return res.status(200).json({
           status: true,
+          status_code:200,
           message: 'Print providers fetched successfully',
           data: response.data
-          status_code:200,
+        
         });
       } catch (err) {
         console.error("Error fetching print providers:", err?.response?.data || err.message);
