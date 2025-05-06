@@ -1773,6 +1773,231 @@ exports.saveProduct = async (req, res) => {
 
 
 
+//final fix perflex
+// exports.saveProductSave = async (req, res) => {
+//   try {
+//     const printifyToken = process.env.PRINTIFY_API_TOKEN;
+
+//     const {
+//       shopId,
+//       title,
+//       description,
+//       printProvider,
+//       imageLinks = [],
+//       variants = [],
+//       tags = [],
+//       categoryId,
+//       includeSafetyInfo = false,
+//       publishProduct = false
+//     } = req.body;
+
+//     // Validate required fields
+//     if (!shopId || !categoryId || !printProvider || !title || !description || !variants.length || !imageLinks.length || !tags.length) {
+//       return res.status(400).json({
+//         status: false,
+//         message: 'Missing required fields: shopId, categoryId, printProvider, title, description, variants, images, and tags',
+//       });
+//     }
+
+//     // (Optional) Fetch variant info from Printify Catalog API (NO AUTH HEADER!)
+//     let catalogVariants = [];
+//     try {
+//       const catalogRes = await axios.get(
+//         `https://api.printify.com/v1/catalog/blueprints/${categoryId}/print_providers/${printProvider}/variants.json`
+//       );
+//       catalogVariants = catalogRes.data.variants;
+//     } catch (e) {
+//       // Not critical, just log
+//       console.error("Catalog API failed, using frontend prices.", e.response?.data || e.message);
+//     }
+
+//     // 1. Upload images to Printify and collect their IDs (AUTH HEADER REQUIRED)
+//     const uploadedImageIds = [];
+//     for (const imageLink of imageLinks) {
+//       const fileName = imageLink.split('/').pop() || 'image.png';
+//       try {
+//         const uploadRes = await axios.post(
+//           'https://api.printify.com/v1/uploads/images.json',
+//           { file_name: fileName, url: imageLink },
+//           {
+//             headers: {
+//               Authorization: `Bearer ${printifyToken}`,
+//               'Content-Type': 'application/json',
+//             },
+//           }
+//         );
+//         if (uploadRes.data?.id) uploadedImageIds.push(uploadRes.data.id);
+//       } catch (e) {
+//         console.error(`Upload failed for URL ${imageLink}`, e.response?.data || e.message);
+//       }
+//     }
+
+//     if (!uploadedImageIds.length) {
+//       return res.status(400).json({
+//         status: false,
+//         message: 'No images were successfully uploaded',
+//       });
+//     }
+
+//     // 2. Use prices as provided by frontend
+//     const dynamicVariants = variants.map(v => ({
+//       id: typeof v.id === 'string' ? parseInt(v.id) : v.id,
+//       price: typeof v.price === 'string' ? parseInt(v.price) : v.price,
+//       is_enabled: v.is_enabled ?? true
+//     }));
+
+//     // 3. Build product payload
+//     const variantIds = dynamicVariants.map(v => v.id);
+//     const productData = {
+//       title,
+//       description,
+//       blueprint_id: parseInt(categoryId),
+//       print_provider_id: parseInt(printProvider),
+//       variants: dynamicVariants,
+//       images: uploadedImageIds.map(id => ({ id })),
+//       print_areas: [
+//         {
+//           variant_ids: variantIds,
+//           placeholders: [
+//             {
+//               position: "front",
+//               images: uploadedImageIds.map(id => ({
+//                 id,
+//                 x: 0.5,
+//                 y: 0.5,
+//                 scale: 1,
+//                 angle: 0
+//               }))
+//             }
+//           ]
+//         }
+//       ],
+//       tags: tags.length ? tags : ['product'],
+//       options: [],
+//       is_locked: false,
+//     };
+
+//     if (includeSafetyInfo) {
+//       productData.safety_information = "GPSR information: John Doe, test@example.com, 123 Main St, Apt 1, New York, NY, 10001, US\nProduct information: Gildan, 5000, 2 year warranty in EU and UK as per Directive 1999/44/EC\nWarnings, Hazard: No warranty, US\nCare instructions: Machine wash: warm (max 40C or 105F), Non-chlorine bleach as needed, Tumble dry: medium, Do not iron, Do not dryclean";
+//     }
+
+//     // 4. Create product (AUTH HEADER REQUIRED)
+//     const createResponse = await axios.post(
+//       `https://api.printify.com/v1/shops/${shopId}/products.json`,
+//       productData,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${printifyToken}`,
+//           'Content-Type': 'application/json',
+//         },
+//       }
+//     );
+
+//     // 5. Publish product if requested (AUTH HEADER REQUIRED)
+//     let publishResponse = null;
+//     if (publishProduct && createResponse.data?.id) {
+//       try {
+//         publishResponse = await axios.post(
+//           `https://api.printify.com/v1/shops/${shopId}/products/${createResponse.data.id}/publish.json`,
+//           {
+//             title: true,
+//             description: true,
+//             images: true,
+//             variants: true,
+//             tags: true
+//           },
+//           {
+//             headers: {
+//               Authorization: `Bearer ${printifyToken}`,
+//               'Content-Type': 'application/json',
+//             },
+//           }
+//         );
+//       } catch (err) {
+//         if (
+//           err.response &&
+//           err.response.data &&
+//           err.response.data.error &&
+//           err.response.data.error.errors &&
+//           err.response.data.error.errors.reason &&
+//           err.response.data.error.errors.reason.includes('not connected to sales channel')
+//         ) {
+//           return res.status(200).json({
+//             status: true,
+//             message: "Product created as draft in Printify (shop not connected to sales channel).",
+//             warning: err.response.data.error.errors.reason,
+//             error: err.response.data.error
+//           });
+//         }
+//         return res.status(400).json({
+//           status: false,
+//           message: err.response?.data?.message || err.message,
+//           error: err.response?.data || { message: err.message },
+//         });
+//       }
+//     }
+
+//     if (
+//       publishResponse &&
+//       publishResponse.data &&
+//       publishResponse.data.error &&
+//       publishResponse.data.error.errors &&
+//       publishResponse.data.error.errors.reason &&
+//       publishResponse.data.error.errors.reason.includes('not connected to sales channel')
+//     ) {
+//       return res.status(200).json({
+//         status: true,
+//         message: "Product created as draft in Printify (shop not connected to sales channel).",
+//         warning: publishResponse.data.error.errors.reason,
+//         error: publishResponse.data.error
+//       });
+//     }
+
+//     // Success response
+//     return res.status(200).json({
+//       status: true,
+//       message: 'Product created successfully',
+//       data: createResponse.data,
+//     });
+
+//   } catch (err) {
+//     console.error("Error in saveProductSave:", err.message);
+
+//     if (
+//       err.response &&
+//       err.response.data &&
+//       err.response.data.error &&
+//       err.response.data.error.errors &&
+//       err.response.data.error.errors.reason &&
+//       err.response.data.error.errors.reason.includes('not connected to sales channel')
+//     ) {
+//       return res.status(200).json({
+//         status: true,
+//         message: "Product created as draft in Printify (shop not connected to sales channel).",
+//         warning: err.response.data.error.errors.reason,
+//         error: err.response.data.error
+//       });
+//     }
+
+//     if (err.response) {
+//       return res.status(err.response.status || 400).json({
+//         status: false,
+//         message: err.response.data?.message || err.message,
+//         error: err.response.data || { message: err.message },
+//       });
+//     }
+//     return res.status(400).json({
+//       status: false,
+//       message: err.message,
+//       error: { message: err.message },
+//     });
+//   }
+// };
+
+
+
+
+
 
 exports.saveProductSave = async (req, res) => {
   try {
@@ -1799,19 +2024,7 @@ exports.saveProductSave = async (req, res) => {
       });
     }
 
-    // (Optional) Fetch variant info from Printify Catalog API (NO AUTH HEADER!)
-    let catalogVariants = [];
-    try {
-      const catalogRes = await axios.get(
-        `https://api.printify.com/v1/catalog/blueprints/${categoryId}/print_providers/${printProvider}/variants.json`
-      );
-      catalogVariants = catalogRes.data.variants;
-    } catch (e) {
-      // Not critical, just log
-      console.error("Catalog API failed, using frontend prices.", e.response?.data || e.message);
-    }
-
-    // 1. Upload images to Printify and collect their IDs (AUTH HEADER REQUIRED)
+    // 1. Upload all images to Printify and collect their IDs
     const uploadedImageIds = [];
     for (const imageLink of imageLinks) {
       const fileName = imageLink.split('/').pop() || 'image.png';
@@ -1839,22 +2052,22 @@ exports.saveProductSave = async (req, res) => {
       });
     }
 
-    // 2. Use prices as provided by frontend
-    const dynamicVariants = variants.map(v => ({
+    // 2. Prepare variants for Printify (only id, price, is_enabled)
+    const printifyVariants = variants.map(v => ({
       id: typeof v.id === 'string' ? parseInt(v.id) : v.id,
       price: typeof v.price === 'string' ? parseInt(v.price) : v.price,
       is_enabled: v.is_enabled ?? true
     }));
 
-    // 3. Build product payload
-    const variantIds = dynamicVariants.map(v => v.id);
+    // 3. Build product payload for Printify
+    const variantIds = printifyVariants.map(v => v.id);
     const productData = {
       title,
       description,
       blueprint_id: parseInt(categoryId),
       print_provider_id: parseInt(printProvider),
-      variants: dynamicVariants,
-      images: uploadedImageIds.map(id => ({ id })),
+      variants: printifyVariants,
+      images: uploadedImageIds.map(id => ({ id })), // All images will show in Printify/store
       print_areas: [
         {
           variant_ids: variantIds,
@@ -1881,19 +2094,58 @@ exports.saveProductSave = async (req, res) => {
       productData.safety_information = "GPSR information: John Doe, test@example.com, 123 Main St, Apt 1, New York, NY, 10001, US\nProduct information: Gildan, 5000, 2 year warranty in EU and UK as per Directive 1999/44/EC\nWarnings, Hazard: No warranty, US\nCare instructions: Machine wash: warm (max 40C or 105F), Non-chlorine bleach as needed, Tumble dry: medium, Do not iron, Do not dryclean";
     }
 
-    // 4. Create product (AUTH HEADER REQUIRED)
-    const createResponse = await axios.post(
-      `https://api.printify.com/v1/shops/${shopId}/products.json`,
-      productData,
-      {
-        headers: {
-          Authorization: `Bearer ${printifyToken}`,
-          'Content-Type': 'application/json',
-        },
+    // 4. Create product in Printify
+    let createResponse;
+    try {
+      createResponse = await axios.post(
+        `https://api.printify.com/v1/shops/${shopId}/products.json`,
+        productData,
+        {
+          headers: {
+            Authorization: `Bearer ${printifyToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    } catch (err) {
+      // Universal error handler for "not connected to sales channel"
+      let reason = null;
+      if (
+        err.response &&
+        err.response.data
+      ) {
+        if (
+          err.response.data.error &&
+          err.response.data.error.errors &&
+          err.response.data.error.errors.reason &&
+          err.response.data.error.errors.reason.includes('not connected to sales channel')
+        ) {
+          reason = err.response.data.error.errors.reason;
+        } else if (
+          err.response.data.errors &&
+          err.response.data.errors.reason &&
+          err.response.data.errors.reason.includes('not connected to sales channel')
+        ) {
+          reason = err.response.data.errors.reason;
+        }
       }
-    );
+      if (reason) {
+        return res.status(200).json({
+          status: true,
+          message: "Product created as draft in Printify (shop not connected to sales channel).",
+          warning: reason,
+          error: err.response.data.error || err.response.data.errors,
+          variants
+        });
+      }
+      return res.status(err.response?.status || 400).json({
+        status: false,
+        message: err.response?.data?.message || err.message,
+        error: err.response?.data || { message: err.message },
+      });
+    }
 
-    // 5. Publish product if requested (AUTH HEADER REQUIRED)
+    // 5. Publish product if requested
     let publishResponse = null;
     if (publishProduct && createResponse.data?.id) {
       try {
@@ -1914,19 +2166,34 @@ exports.saveProductSave = async (req, res) => {
           }
         );
       } catch (err) {
+        // Universal error handler for "not connected to sales channel"
+        let reason = null;
         if (
           err.response &&
-          err.response.data &&
-          err.response.data.error &&
-          err.response.data.error.errors &&
-          err.response.data.error.errors.reason &&
-          err.response.data.error.errors.reason.includes('not connected to sales channel')
+          err.response.data
         ) {
+          if (
+            err.response.data.error &&
+            err.response.data.error.errors &&
+            err.response.data.error.errors.reason &&
+            err.response.data.error.errors.reason.includes('not connected to sales channel')
+          ) {
+            reason = err.response.data.error.errors.reason;
+          } else if (
+            err.response.data.errors &&
+            err.response.data.errors.reason &&
+            err.response.data.errors.reason.includes('not connected to sales channel')
+          ) {
+            reason = err.response.data.errors.reason;
+          }
+        }
+        if (reason) {
           return res.status(200).json({
             status: true,
             message: "Product created as draft in Printify (shop not connected to sales channel).",
-            warning: err.response.data.error.errors.reason,
-            error: err.response.data.error
+            warning: reason,
+            error: err.response.data.error || err.response.data.errors,
+            variants
           });
         }
         return res.status(400).json({
@@ -1937,19 +2204,31 @@ exports.saveProductSave = async (req, res) => {
       }
     }
 
+    // Also handle this case if it appears in the publish response
     if (
       publishResponse &&
       publishResponse.data &&
-      publishResponse.data.error &&
-      publishResponse.data.error.errors &&
-      publishResponse.data.error.errors.reason &&
-      publishResponse.data.error.errors.reason.includes('not connected to sales channel')
+      (
+        (publishResponse.data.error &&
+          publishResponse.data.error.errors &&
+          publishResponse.data.error.errors.reason &&
+          publishResponse.data.error.errors.reason.includes('not connected to sales channel')
+        ) ||
+        (publishResponse.data.errors &&
+          publishResponse.data.errors.reason &&
+          publishResponse.data.errors.reason.includes('not connected to sales channel')
+        )
+      )
     ) {
+      const reason = publishResponse.data.error
+        ? publishResponse.data.error.errors.reason
+        : publishResponse.data.errors.reason;
       return res.status(200).json({
         status: true,
         message: "Product created as draft in Printify (shop not connected to sales channel).",
-        warning: publishResponse.data.error.errors.reason,
-        error: publishResponse.data.error
+        warning: reason,
+        error: publishResponse.data.error || publishResponse.data.errors,
+        variants
       });
     }
 
@@ -1958,41 +2237,49 @@ exports.saveProductSave = async (req, res) => {
       status: true,
       message: 'Product created successfully',
       data: createResponse.data,
+      variants // Return your variants array (with options) for your UI
     });
 
   } catch (err) {
-    console.error("Error in saveProductSave:", err.message);
-
+    // ---- UNIVERSAL ERROR HANDLER ----
+    let reason = null;
     if (
       err.response &&
-      err.response.data &&
-      err.response.data.error &&
-      err.response.data.error.errors &&
-      err.response.data.error.errors.reason &&
-      err.response.data.error.errors.reason.includes('not connected to sales channel')
+      err.response.data
     ) {
+      if (
+        err.response.data.error &&
+        err.response.data.error.errors &&
+        err.response.data.error.errors.reason &&
+        err.response.data.error.errors.reason.includes('not connected to sales channel')
+      ) {
+        reason = err.response.data.error.errors.reason;
+      } else if (
+        err.response.data.errors &&
+        err.response.data.errors.reason &&
+        err.response.data.errors.reason.includes('not connected to sales channel')
+      ) {
+        reason = err.response.data.errors.reason;
+      }
+    }
+    if (reason) {
       return res.status(200).json({
         status: true,
         message: "Product created as draft in Printify (shop not connected to sales channel).",
-        warning: err.response.data.error.errors.reason,
-        error: err.response.data.error
+        warning: reason,
+        error: err.response.data.error || err.response.data.errors,
+        variants: req.body.variants
       });
     }
 
-    if (err.response) {
-      return res.status(err.response.status || 400).json({
-        status: false,
-        message: err.response.data?.message || err.message,
-        error: err.response.data || { message: err.message },
-      });
-    }
-    return res.status(400).json({
+    return res.status(err.response?.status || 400).json({
       status: false,
-      message: err.message,
-      error: { message: err.message },
+      message: err.response?.data?.message || err.message,
+      error: err.response?.data || { message: err.message },
     });
   }
 };
+
 
 
 
