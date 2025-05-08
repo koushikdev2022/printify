@@ -2506,6 +2506,372 @@ exports.saveProduct = async (req, res) => {
 //   }
 // };
 
+//working fine
+// exports.saveProductSave = async (req, res) => {
+//   try {
+//     const printifyToken = process.env.PRINTIFY_API_TOKEN;
+
+//     const {
+//       shopId,
+//       title,
+//       description,
+//       printProvider,
+//       imageLinks = [],
+//       variants = [],
+//       tags = [],
+//       categoryId,
+//       includeSafetyInfo = false,
+//       publishProduct = false
+//     } = req.body;
+
+//     // Validate required fields
+//     if (!shopId || !categoryId || !printProvider || !title || !description || !variants.length || !imageLinks.length || !tags.length) {
+//       return res.status(400).json({
+//         status: false,
+//         message: 'Missing required fields: shopId, categoryId, printProvider, title, description, variants, images, and tags',
+//       });
+//     }
+
+//     // Debug - Log the incoming request
+//     console.log('Received product creation request:', {
+//       shopId, categoryId, printProvider, title, 
+//       variantsCount: variants.length,
+//       imagesCount: imageLinks.length
+//     });
+
+//     // Check for valid variants for this blueprint and provider
+//     try {
+//       console.log(`Fetching valid variants for blueprint ${categoryId} and provider ${printProvider}...`);
+//       const providerResponse = await axios.get(
+//         `https://api.printify.com/v1/catalog/blueprints/${categoryId}/print_providers/${printProvider}/variants.json`,
+//         {
+//           headers: {
+//             Authorization: `Bearer ${printifyToken}`,
+//             'Content-Type': 'application/json',
+//           },
+//         }
+//       );
+      
+//       console.log('Valid variant IDs from Printify:', 
+//         providerResponse.data.variants.map(v => v.id)
+//       );
+      
+//       // Check if our variants exist in the valid list
+//       const validVariantIds = new Set(providerResponse.data.variants.map(v => v.id));
+//       const invalidVariants = variants.filter(v => !validVariantIds.has(parseInt(v.id)));
+      
+//       if (invalidVariants.length > 0) {
+//         console.error('Invalid variant IDs detected:', 
+//           invalidVariants.map(v => v.id)
+//         );
+//         return res.status(400).json({
+//           status: false,
+//           message: 'Some variant IDs are not valid for this product type and provider',
+//           invalidVariants: invalidVariants.map(v => v.id),
+//           validVariants: Array.from(validVariantIds)
+//         });
+//       }
+//     } catch (e) {
+//       console.error('Error checking variant validity:', e.response?.data || e.message);
+//       // Continue anyway, as we might have the correct variants
+//     }
+
+//     // 1. Upload all images to Printify and collect their IDs
+//     const uploadedImageIds = [];
+//     for (const imageLink of imageLinks) {
+//       const fileName = imageLink.split('/').pop() || 'image.png';
+//       try {
+//         console.log(`Uploading image: ${fileName}`);
+//         const uploadRes = await axios.post(
+//           'https://api.printify.com/v1/uploads/images.json',
+//           { file_name: fileName, url: imageLink },
+//           {
+//             headers: {
+//               Authorization: `Bearer ${printifyToken}`,
+//               'Content-Type': 'application/json',
+//             },
+//           }
+//         );
+//         if (uploadRes.data?.id) {
+//           uploadedImageIds.push(uploadRes.data.id);
+//           console.log(`Image uploaded successfully, ID: ${uploadRes.data.id}`);
+//         }
+//       } catch (e) {
+//         console.error(`Upload failed for URL ${imageLink}`, e.response?.data || e.message);
+//       }
+//     }
+
+//     if (!uploadedImageIds.length) {
+//       return res.status(400).json({
+//         status: false,
+//         message: 'No images were successfully uploaded',
+//       });
+//     }
+
+//     // 2. Prepare variants for Printify (only id, price, is_enabled)
+//     const printifyVariants = variants.map(v => ({
+//       id: typeof v.id === 'string' ? parseInt(v.id) : v.id,
+//       price: typeof v.price === 'string' ? parseFloat(v.price) : v.price,
+//       is_enabled: v.is_enabled ?? true
+//     }));
+
+//     // 3. Build product payload for Printify
+//     // Make sure variant IDs are integers
+//     const variantIds = printifyVariants.map(v => parseInt(v.id));
+    
+//     console.log('Using variant IDs:', variantIds);
+    
+//     const productData = {
+//       title,
+//       description,
+//       blueprint_id: parseInt(categoryId),
+//       print_provider_id: parseInt(printProvider),
+//       variants: printifyVariants,
+//       images: uploadedImageIds.map(id => ({ id })), // All images will show in Printify/store
+      
+//       // MODIFIED: Changed print_areas from array to object with named positions and added required placeholders field
+//       // print_areas: {
+//       //   front: {
+//       //     variant_ids: variantIds,
+//       //     placeholders: [
+//       //       {
+//       //         position: "front",
+//       //         images: uploadedImageIds.map(id => ({
+//       //           id,
+//       //           x: 0.5,
+//       //           y: 0.5,
+//       //           scale: 1.15, // Slightly larger than 1 to ensure full bleed
+//       //           angle: 0
+//       //         }))
+//       //       }
+//       //     ]
+//       //   }
+//       // },
+//       print_areas: {
+//         front: {
+//           variant_ids: variantIds,
+//           placeholders: [
+//             {
+//               position: "front",
+//               images: uploadedImageIds.map(id => ({
+//                 id,
+//                 x: 0.5,
+//                 y: 0.48, // Slightly moved up to address the top gap
+//                 scale: 1.35, // Further increased to ensure full coverage
+//                 angle: 0
+//               }))
+//             }
+//           ]
+//         }
+//       },
+//       tags: tags.length ? tags : ['product'],
+//       options: [],
+//       is_locked: false,
+//     };
+
+//     if (includeSafetyInfo) {
+//       productData.safety_information = "GPSR information: John Doe, test@example.com, 123 Main St, Apt 1, New York, NY, 10001, US\nProduct information: Gildan, 5000, 2 year warranty in EU and UK as per Directive 1999/44/EC\nWarnings, Hazard: No warranty, US\nCare instructions: Machine wash: warm (max 40C or 105F), Non-chlorine bleach as needed, Tumble dry: medium, Do not iron, Do not dryclean";
+//     }
+
+//     // Debug - Log what we're sending to Printify
+//     console.log('Sending to Printify:', JSON.stringify(productData, null, 2));
+
+//     // 4. Create product in Printify
+//     let createResponse;
+//     try {
+//       createResponse = await axios.post(
+//         `https://api.printify.com/v1/shops/${shopId}/products.json`,
+//         productData,
+//         {
+//           headers: {
+//             Authorization: `Bearer ${printifyToken}`,
+//             'Content-Type': 'application/json',
+//           },
+//         }
+//       );
+      
+//       console.log('Product created successfully:', createResponse.data.id);
+//     } catch (err) {
+//       // Debug - Log detailed error from Printify
+//       console.error('Printify API Error Response:', JSON.stringify(err.response?.data, null, 2));
+      
+//       // Universal error handler for "not connected to sales channel"
+//       let reason = null;
+//       if (
+//         err.response &&
+//         err.response.data
+//       ) {
+//         if (
+//           err.response.data.error &&
+//           err.response.data.error.errors &&
+//           err.response.data.error.errors.reason &&
+//           err.response.data.error.errors.reason.includes('not connected to sales channel')
+//         ) {
+//           reason = err.response.data.error.errors.reason;
+//         } else if (
+//           err.response.data.errors &&
+//           err.response.data.errors.reason &&
+//           err.response.data.errors.reason.includes('not connected to sales channel')
+//         ) {
+//           reason = err.response.data.errors.reason;
+//         }
+//       }
+//       if (reason) {
+//         return res.status(200).json({
+//           status: true,
+//           message: "Product created as draft in Printify (shop not connected to sales channel).",
+//           warning: reason,
+//           error: err.response.data.error || err.response.data.errors,
+//           variants
+//         });
+//       }
+//       return res.status(err.response?.status || 400).json({
+//         status: false,
+//         message: err.response?.data?.message || err.message,
+//         error: err.response?.data || { message: err.message },
+//       });
+//     }
+
+//     // 5. Publish product if requested
+//     let publishResponse = null;
+//     if (publishProduct && createResponse.data?.id) {
+//       try {
+//         console.log(`Publishing product ${createResponse.data.id}...`);
+//         publishResponse = await axios.post(
+//           `https://api.printify.com/v1/shops/${shopId}/products/${createResponse.data.id}/publish.json`,
+//           {
+//             title: true,
+//             description: true,
+//             images: true,
+//             variants: true,
+//             tags: true
+//           },
+//           {
+//             headers: {
+//               Authorization: `Bearer ${printifyToken}`,
+//               'Content-Type': 'application/json',
+//             },
+//           }
+//         );
+//         console.log('Product published successfully');
+//       } catch (err) {
+//         console.error('Error publishing product:', JSON.stringify(err.response?.data, null, 2));
+//         // Universal error handler for "not connected to sales channel"
+//         let reason = null;
+//         if (
+//           err.response &&
+//           err.response.data
+//         ) {
+//           if (
+//             err.response.data.error &&
+//             err.response.data.error.errors &&
+//             err.response.data.error.errors.reason &&
+//             err.response.data.error.errors.reason.includes('not connected to sales channel')
+//           ) {
+//             reason = err.response.data.error.errors.reason;
+//           } else if (
+//             err.response.data.errors &&
+//             err.response.data.errors.reason &&
+//             err.response.data.errors.reason.includes('not connected to sales channel')
+//           ) {
+//             reason = err.response.data.errors.reason;
+//           }
+//         }
+//         if (reason) {
+//           return res.status(200).json({
+//             status: true,
+//             message: "Product created as draft in Printify (shop not connected to sales channel).",
+//             warning: reason,
+//             error: err.response.data.error || err.response.data.errors,
+//             variants
+//           });
+//         }
+//         return res.status(400).json({
+//           status: false,
+//           message: err.response?.data?.message || err.message,
+//           error: err.response?.data || { message: err.message },
+//         });
+//       }
+//     }
+
+//     // Also handle this case if it appears in the publish response
+//     if (
+//       publishResponse &&
+//       publishResponse.data &&
+//       (
+//         (publishResponse.data.error &&
+//           publishResponse.data.error.errors &&
+//           publishResponse.data.error.errors.reason &&
+//           publishResponse.data.error.errors.reason.includes('not connected to sales channel')
+//         ) ||
+//         (publishResponse.data.errors &&
+//           publishResponse.data.errors.reason &&
+//           publishResponse.data.errors.reason.includes('not connected to sales channel')
+//         )
+//       )
+//     ) {
+//       const reason = publishResponse.data.error
+//         ? publishResponse.data.error.errors.reason
+//         : publishResponse.data.errors.reason;
+//       return res.status(200).json({
+//         status: true,
+//         message: "Product created as draft in Printify (shop not connected to sales channel).",
+//         warning: reason,
+//         error: publishResponse.data.error || publishResponse.data.errors,
+//         variants
+//       });
+//     }
+
+//     // Success response
+//     return res.status(200).json({
+//       status: true,
+//       message: 'Product created successfully',
+//       data: createResponse.data,
+//       variants // Return your variants array (with options) for your UI
+//     });
+
+//   } catch (err) {
+//     console.error('Unexpected error in saveProductSave:', err);
+    
+//     // ---- UNIVERSAL ERROR HANDLER ----
+//     let reason = null;
+//     if (
+//       err.response &&
+//       err.response.data
+//     ) {
+//       if (
+//         err.response.data.error &&
+//         err.response.data.error.errors &&
+//         err.response.data.error.errors.reason &&
+//         err.response.data.error.errors.reason.includes('not connected to sales channel')
+//       ) {
+//         reason = err.response.data.error.errors.reason;
+//       } else if (
+//         err.response.data.errors &&
+//         err.response.data.errors.reason &&
+//         err.response.data.errors.reason.includes('not connected to sales channel')
+//       ) {
+//         reason = err.response.data.errors.reason;
+//       }
+//     }
+//     if (reason) {
+//       return res.status(200).json({
+//         status: true,
+//         message: "Product created as draft in Printify (shop not connected to sales channel).",
+//         warning: reason,
+//         error: err.response.data.error || err.response.data.errors,
+//         variants: req.body.variants
+//       });
+//     }
+
+//     return res.status(err.response?.status || 400).json({
+//       status: false,
+//       message: err.response?.data?.message || err.message,
+//       error: err.response?.data || { message: err.message },
+//     });
+//   }
+// };
+
 exports.saveProductSave = async (req, res) => {
   try {
     const printifyToken = process.env.PRINTIFY_API_TOKEN;
@@ -2520,7 +2886,9 @@ exports.saveProductSave = async (req, res) => {
       tags = [],
       categoryId,
       includeSafetyInfo = false,
-      publishProduct = false
+      publishProduct = false,
+      // Added new optional parameters for image dimensions
+      imageDimensions = [] // Array of {width, height} objects corresponding to imageLinks
     } = req.body;
 
     // Validate required fields
@@ -2577,7 +2945,10 @@ exports.saveProductSave = async (req, res) => {
 
     // 1. Upload all images to Printify and collect their IDs
     const uploadedImageIds = [];
-    for (const imageLink of imageLinks) {
+    const uploadedImageDetails = []; // To store image IDs and dimensions if available
+    
+    for (let i = 0; i < imageLinks.length; i++) {
+      const imageLink = imageLinks[i];
       const fileName = imageLink.split('/').pop() || 'image.png';
       try {
         console.log(`Uploading image: ${fileName}`);
@@ -2593,6 +2964,14 @@ exports.saveProductSave = async (req, res) => {
         );
         if (uploadRes.data?.id) {
           uploadedImageIds.push(uploadRes.data.id);
+          
+          // Store uploaded image details with dimensions if available
+          uploadedImageDetails.push({
+            id: uploadRes.data.id,
+            width: imageDimensions[i]?.width || null,
+            height: imageDimensions[i]?.height || null
+          });
+          
           console.log(`Image uploaded successfully, ID: ${uploadRes.data.id}`);
         }
       } catch (e) {
@@ -2620,6 +2999,64 @@ exports.saveProductSave = async (req, res) => {
     
     console.log('Using variant IDs:', variantIds);
     
+    // Helper function to calculate optimal scale based on image and canvas dimensions
+    // const calculateOptimalScale = (imageWidth, imageHeight, canvasWidth, canvasHeight) => {
+    //   // If we don't have image dimensions, use a default scale
+    //   if (!imageWidth || !imageHeight || !canvasWidth || !canvasHeight) {
+    //     return 1.4; // Default value for full coverage
+    //   }
+      
+    //   // Calculate aspect ratios
+    //   const imageRatio = imageWidth / imageHeight;
+    //   const canvasRatio = canvasWidth / canvasHeight;
+      
+    //   // Determine which dimension should be scaled more
+    //   if (imageRatio > canvasRatio) {
+    //     // Image is wider than canvas (relative to height)
+    //     return (canvasHeight / imageHeight) * 1.2; // 20% extra for bleed
+    //   } else {
+    //     // Image is taller than canvas (relative to width)
+    //     return (canvasWidth / imageWidth) * 1.2; // 20% extra for bleed
+    //   }
+    // };
+    const calculateOptimalScale = (imageWidth, imageHeight, canvasWidth, canvasHeight) => {
+      if (!imageWidth || !imageHeight || !canvasWidth || !canvasHeight) {
+        return 1.48;
+      }
+    
+      const imageAspect = imageWidth / imageHeight;
+      const canvasAspect = canvasWidth / canvasHeight;
+    
+      let baseScale;
+      if (imageAspect > canvasAspect) {
+        // Wider image
+        baseScale = canvasHeight / imageHeight;
+      } else {
+        // Taller or equal image
+        baseScale = canvasWidth / imageWidth;
+      }
+    
+      const paddedScale = baseScale * 1.2; // 20% extra for full bleed
+      return parseFloat(Math.max(paddedScale, 1.45).toFixed(2)); // Ensure minimum scale
+    };
+    
+    // Get print provider details to determine canvas dimensions
+    // Note: In a real implementation, you might want to fetch these from Printify's API
+    // For now, we'll use standard dimensions based on common canvas sizes
+    const getCanvasDimensions = (blueprintId) => {
+      // Default dimensions for standard canvas sizes
+      // These should be adjusted based on actual product specifications
+      const dimensions = {
+        // Using example dimensions - replace with actual values from Printify
+        width: 3000, // pixels
+        height: 3000, // pixels
+      };
+      
+      return dimensions;
+    };
+    
+    const canvasDimensions = getCanvasDimensions(categoryId);
+    
     const productData = {
       title,
       description,
@@ -2628,20 +3065,50 @@ exports.saveProductSave = async (req, res) => {
       variants: printifyVariants,
       images: uploadedImageIds.map(id => ({ id })), // All images will show in Printify/store
       
-      // MODIFIED: Changed print_areas from array to object with named positions and added required placeholders field
+      // Enhanced print_areas configuration with dynamic scaling when possible
+      // print_areas: {
+      //   front: {
+      //     variant_ids: variantIds,
+      //     placeholders: [
+      //       {
+      //         position: "front",
+      //         images: uploadedImageDetails.map(img => {
+      //           // Calculate optimal scale if dimensions are available
+      //           const scale = img.width && img.height 
+      //             ? calculateOptimalScale(img.width, img.height, canvasDimensions.width, canvasDimensions.height)
+      //             : 1.4; // Default scale if dimensions not available
+                
+      //           return {
+      //             id: img.id,
+      //             x: 0.5, // Horizontal center
+      //             y: 0.48, // Slightly above center to address top gap
+      //             scale: scale, // Dynamic or default scale
+      //             angle: 0
+      //           };
+      //         })
+      //       }
+      //     ]
+      //   }
+      // },
       print_areas: {
         front: {
           variant_ids: variantIds,
           placeholders: [
             {
               position: "front",
-              images: uploadedImageIds.map(id => ({
-                id,
-                x: 0.5,
-                y: 0.5,
-                scale: 1,
-                angle: 0
-              }))
+              images: uploadedImageDetails.map(img => {
+                const scale = img.width && img.height
+                  ? calculateOptimalScale(img.width, img.height, canvasDimensions.width, canvasDimensions.height)
+                  : 1.48; // Fallback scale with more bleed
+      
+                return {
+                  id: img.id,
+                  x: 0.5,  // Centered horizontally
+                  y: 0.5,  // Fully centered vertically
+                  scale: scale,
+                  angle: 0
+                };
+              })
             }
           ]
         }
@@ -2854,8 +3321,6 @@ exports.saveProductSave = async (req, res) => {
     });
   }
 };
-
-
 
 exports.category = async(req,res)=>{
     try{
