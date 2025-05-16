@@ -12,6 +12,7 @@ sequelize
   .then(() => console.log('Database connected successfully'))
   .catch((error) => console.error('Unable to connect to the database:', error));
   
-app.listen(port, () => {
+const server = app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
 });
+server.setTimeout(9000000000); 
